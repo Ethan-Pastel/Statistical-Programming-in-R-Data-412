@@ -1,0 +1,471 @@
+---
+title: "HW_7 Data 412"
+author: "Ethan Pastel"
+date: "2024-02-01"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# 1 Scrabble Words
+
+
+# 1. Use a {readr} function to load into R the list of acceptable (2015) Scrabble words from https: //raw.githubusercontent.com/rressler/data_raw_courses main/scrabble_words.txt. Note “NA” is an actual word. It means “no” or “not”
+
+```{r}
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(stringr)
+
+scrabble_words_1 <- read_csv("C:/Users/cmpas/Downloads/scrabble_words-1.txt")
+
+head(scrabble_words_1, 10)
+```
+
+# Show the number of words without showing any words. Show the number of NAs. Should be 0
+
+```{r}
+num_words <- nrow(scrabble_words_1)
+
+
+num_NA <- sum(is.na(scrabble_words_1$word))
+
+
+paste("The number of words in the scrabble data set is:", num_words)
+
+na_rows <- scrabble_words_1 %>%
+  filter(is.na(word))
+
+print(na_rows)
+
+paste("The number of NA in the scrabble data set is:", num_NA)
+```
+
+# 2. Use {stringr} and other tidyverse functions to show how many words either begin or end in “X”? There should be over 800.
+
+
+
+```{r}
+words_with_x <- scrabble_words_1 %>%
+  filter(str_detect(word, "^X|X$"))
+
+
+glimpse(words_with_x)
+```
+
+
+
+# 3. Use {stringr} and other tidyverse functions to show how many words contain all of the vowels (A, E, I, O, and U)? There should be over 3000
+
+```{r}
+words_with_all_vowels <- scrabble_words_1 %>%
+  filter(str_detect(tolower(word), "a") &
+         str_detect(tolower(word), "e") &
+         str_detect(tolower(word), "i") &
+         str_detect(tolower(word), "o") &
+         str_detect(tolower(word), "u"))
+glimpse(words_with_all_vowels)
+```
+
+# 4. Use {stringr} and other tidyverse functions to show the shortest words that contain all of the vowels? There should be 5.
+
+```{r}
+shortest_words_with_all_vowels <- scrabble_words_1 %>%
+  filter(str_detect(tolower(word), "a") &
+         str_detect(tolower(word), "e") &
+         str_detect(tolower(word), "i") &
+         str_detect(tolower(word), "o") &
+         str_detect(tolower(word), "u")) %>%
+  arrange(nchar(word))
+
+
+head(shortest_words_with_all_vowels, 5)
+```
+
+# 5. Update the data frame to add two new columns. The first new column of words contains the output
+from using {stringr} and other tidyverse functions to switch the first and last letters of each original word. The second column uses logical variables to indicate if the new words are still valid words. Show how many of the new words are still words. There should be over 21,000
+
+
+```{r}
+scrabble_words_1_updated <- scrabble_words_1 %>%
+  mutate(new_word = str_replace(word, "^(.)(.*)(.)$", "\\3\\2\\1"), is_valid = new_word %in% scrabble_words_1$word)
+
+valid_new_words <- sum(scrabble_words_1_updated$is_valid)
+
+
+print(valid_new_words)
+
+```
+
+# 6. Use {stringr} and other tidyverse functions to show how many of the new words that are still valid
+words after switching the first and last letters have different first and last letters? There should be over 1600
+
+```{r}
+scrabble_words_1_updated <- scrabble_words_1 %>%
+  mutate(new_word = str_replace(word, "^(.)(.*)(.)$", "\\3\\2\\1"), is_valid = new_word %in% scrabble_words_1$word, diff_first_last = str_sub(new_word, 1, 1) != str_sub(new_word, -1, -1))
+
+diff_first_last_count <- sum(scrabble_words_1_updated$is_valid & scrabble_words_1_updated$diff_first_last, na.rm = TRUE)
+
+
+print(diff_first_last_count)
+```
+
+
+# 7. Use tidyverse functions to show the longest words that meet both conditions and their length:
+
+
+# Is still a valid word after switching the first and last letters 'and' 
+
+
+# The first and last letters are different. You should end up with three pairs of words (6 rows).
+
+### Do not understand this question. Im not sure as to what exactly the question is asking.
+
+# 8. Scrabble Scores
+
+# Use the following categorization of letters and scores for each category.
+
+# Assume for this question, you have unlimited numbers of each letter (a normal Scrabble game has a limited numbers of each letter).
+
+# a. Create a function called score() that uses {stringr} and other tidyverse functions to calculate the scores of a vector of input words (in all capital/upper case letters) using the above categories and points.)
+
+
+```{r}
+low <- c("A","E","I","O","U","D","L","M","N","R","S","T","Y")
+med <- c("B","C","F","G","H","K","P","W","V")
+high <- c("J","Q","X","Z")
+pts <- c(1, 5, 10)
+
+score <- function(words) {
+  words <- str_to_upper(words)
+  
+  words %>%
+    str_split("") %>%
+    map(~ sum(case_when(
+      . %in% low ~ pts[1],
+      . %in% med ~ pts[2],
+      . %in% high ~ pts[3],
+      TRUE ~ 0
+    ))) %>%
+    unlist()
+}
+
+scores <- score(words)
+
+print(data.frame(word = words, score = scores))
+
+```
+
+# b. Show the seven-letter words in the data frame that have either the highest or next-highest score?
+(should be 8 words)
+
+```{r}
+seven_letter_words <- scrabble_words_1 %>%
+  filter(nchar(word) == 7) %>%
+  mutate(score = score(word)) %>%
+  arrange(desc(score)) %>%
+  filter(row_number() <= 8)
+
+print(seven_letter_words)
+```
+
+
+# c. Of all words with no vowels (AEIOU), show the word, score and length for three highest scoring words and then for the three longest words.
+
+```{r}
+no_vowel_words <- scrabble_words_1 %>%
+  filter(!str_detect(word, "[aeiouAEIOU]")) %>%
+  mutate(score = score(word)) %>%
+  arrange(desc(score))
+
+highest_scoring_no_vowel <- no_vowel_words %>%
+  head(3)
+
+longest_no_vowel <- no_vowel_words %>%
+  arrange(desc(nchar(word))) %>%
+  head(3)
+
+
+print(highest_scoring_no_vowel)
+
+print(longest_no_vowel)
+```
+
+
+# d. Reproduce the following plot to show the distribution of scores for each possible number of vowels in words with eight or fewer letters.
+
+```{r}
+filtered_words <- scrabble_words_1 %>%
+  filter(nchar(word) <= 8)
+
+filtered_words <- filtered_words %>%
+  mutate(num_vowels = str_count(word, "[aeiouAEIOU]"))
+
+filtered_words <- filtered_words %>%
+  mutate(score = score(word))
+
+ggplot(filtered_words, aes(x = factor(num_vowels), y = score)) + geom_boxplot() + stat_summary(fun = mean, geom = "point", shape = 19, size = 2, color = "red") + labs(title = "Possible Scores for Seven−Letter Words*", subtitle = "Red circles are the sample means of each distribution", x = "Number of Vowels", y = "Score")
+
+```
+
+
+# f. Interpret the plot to include why the red circles are usually above the middle line of the box plots.
+
+
+### The reason the red circles are usually above the middle line of box plots to siginify or show potential outliers, skewed data, or a small sample size.
+
+
+# 2 Bank Data
+
+
+# The US Federal Reserve publishes data on the largest commercial banks chartered in the United States.
+
+# 1. Save the fed_large_c_bank_ratings.csv file to a data directory. Use a {readr} function and relative path to read it in from the /data/ directory. Show how many rows there are in the data frame without showing any other data. Use a {dplyr} function to show a random sample of 3 percent of the rows.
+
+```{r}
+library(readxl)
+
+fed_large_c_bank_ratings<- read_excel("C:/Users/cmpas/Downloads/fed_large_c_bank_ratings-1.xlsx")
+
+num_rows <- nrow(fed_large_c_bank_ratings)
+
+random_sample <- fed_large_c_bank_ratings %>%
+  sample_frac(0.03)  
+print(random_sample)
+
+
+
+head(fed_large_c_bank_ratings)
+
+paste("The number of rows in the federal reserve data set is:", num_rows)
+```
+
+# 2. The names variable appears to contain two or more names for some banks.
+
+
+## a. Use {stringr} and tidyverse functions to show the banks with only one name.
+
+```{r}
+banks_one_name <- fed_large_c_bank_ratings %>%
+  filter(str_count(name, "\\b\\S+\\b") == 1)
+
+print(banks_one_name)
+```
+
+
+## b. Use {stringr} and tidyverse functions to show the banks with more than two names.
+
+```{r}
+banks_more_than_two_names <- fed_large_c_bank_ratings %>%
+  filter(str_count(name, "\\b\\S+\\b") > 2)
+
+glimpse(banks_more_than_two_names)
+```
+
+
+## c. Use a tidyverse function to break all names into two different columns called name (as the primary name) and alternate_name while ignoring any additional names and not incurring a warning message and then save back to the data frame.
+
+```{r}
+fed_large_c_bank_ratings <- fed_large_c_bank_ratings %>%
+  mutate(name = str_extract(name, "\\b\\S+\\b"),  
+    alternate_name = str_replace(name, "^\\S+\\s", "")) 
+
+head(fed_large_c_bank_ratings)
+
+```
+
+# 3. Show how many bank primary names begin with a digit?
+
+```{r}
+num_names_starting_with_digit <- fed_large_c_bank_ratings %>%
+  filter(str_detect(name, "^\\d")) %>%
+  nrow()
+
+print(num_names_starting_with_digit)
+```
+
+
+# 4. Counting occurrences of BANK
+
+
+## a. Show how many of the bank primary names have the letters “BANK” in them? “BANKING” counts.
+
+```{r}
+count_banking_variations <- fed_large_c_bank_ratings %>%
+  filter(str_detect(name, "BANK|BANKING")) %>%
+  nrow()
+print(count_banking_variations)
+```
+
+
+## b. Show how many of the bank primary names have the stand-alone word “BANK” in them? “BANKING”
+does not count
+
+```{r}
+count_stand_alone_bank <- fed_large_c_bank_ratings %>%
+  filter(str_detect(name, "\\bBANK\\b")) %>%
+  nrow()
+print(count_stand_alone_bank)
+```
+
+
+# 5. Updating bank names
+
+
+## a. Wherever the abbreviation “BK” appears by itself in a bank primary name, convert it to the word “BANK” and save to the data frame.
+
+```{r}
+fed_large_c_bank_ratings_updated <- fed_large_c_bank_ratings %>%
+  mutate(name = str_replace_all(name, "\\bBK\\b", "BANK"))
+
+```
+
+
+
+## b. Create a new data frame by adding columns for the four possible positions of the word BANK in name: start, end, middle, and none and a column to confirm.
+
+```{r}
+fed_large_c_bank_positions <- fed_large_c_bank_ratings_updated %>%
+  mutate( start = str_detect(name, "^BANK"), end = str_detect(name, "BANK$"), middle = str_detect(name, "\\bBANK\\b"), none = !str_detect(name, "\\bBANK\\b"), confirm = start | end | middle)
+
+
+```
+
+## c. What are the relative proportions (across all banks) of primary names that now have “BANK” as the start word, the end word, somewhere in the middle, or not at all?
+
+```{r}
+proportions <- fed_large_c_bank_positions %>%
+  summarise( start = mean(start), end = mean(end), middle = mean(middle), none = mean(none))
+
+print(proportions)
+```
+
+# 6. Start with the data frame from 5 with the updated name and position variables.
+
+
+## a. Create a single graph with notched boxplots to compare the distributions of the log of the combined total assets of the banks based on where the word “BANK” appears in their name.
+
+```{r}
+ggplot(fed_large_c_bank_positions, aes(x = factor(confirm), y = log(as.numeric(consolidated_assets)))) + geom_boxplot(notch = TRUE, fill = "darkgreen", color = "black") + labs(x = "Position of 'BANK' in Name", y = "Log of Combined Total Assets") + ggtitle("Distribution of Combined Total Assets by 'BANK' Position") + theme_minimal() 
+
+```
+
+## b. Interpret the plot to answer if there is a relationship between the position or the word “BANK” and the log of the total combined assets?
+
+### Having the word 'bank' in a banks name doe not have an effect on the combined total assests. The two plots are very similiar. If anything it looks like banks that dont have 'bank' in their name have a higher average combined total asset.
+
+## c. Run an analysis of variance using aov() to test the Null hypothesis that position has no effect on the log of combined total assets. Show the summary and interpret the results.
+
+
+```{r}
+
+fed_large_c_bank_positions$consolidated_assets[is.na(fed_large_c_bank_positions$consolidated_assets)] <- mean(fed_large_c_bank_positions$consolidated_assets, na.rm = TRUE)
+
+fed_large_c_bank_positions$consolidated_assets <- as.numeric(fed_large_c_bank_positions$consolidated_assets)
+
+
+anova_result <- aov(log(consolidated_assets) ~ confirm, data = fed_large_c_bank_positions)
+
+print(summary(anova_result))
+
+paste("The F-statistic is 0.105 with a corresponding p-value of 0.746. As the p-value exceeds the significance level of 0.05, we fail to reject the null hypothesis, meaning that the position of 'bank' has no significant effect on the log of combined total assets.")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
